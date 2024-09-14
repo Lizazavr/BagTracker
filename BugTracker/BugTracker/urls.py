@@ -17,15 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import include
-#from BugTracker.authorization import views as authorization_views
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('tasks.urls')),
-    #path('logout', authorization_views.logout_view),
-    #path('dashboard.html', authorization_views.dashboard_view),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
 ]
