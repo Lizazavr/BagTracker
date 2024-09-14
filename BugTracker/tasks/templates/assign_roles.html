@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assign Roles</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="my-4">Assign Roles</h1>
+
+    <form method="post" action="{% url 'assign_roles' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="user">User</label>
+        <select class="form-control" id="user" name="user">
+          {% for user in users %}
+            <option value="{{ user.id }}">{{ user.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="group">Role</label>
+        <select class="form-control" id="group" name="group">
+          {% for group in groups %}
+            <option value="{{ group.id }}">{{ group.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Assign Role</button>
+    </form>
+
+    <h2 class="my-4">Assigned Roles</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user_group in user_groups %}
+          <tr>
+            <td>{{ user_group.user.username }}</td>
+            <td>{{ user_group.group.name }}</td>
+            <td>
+              <a href="{% url 'change_username' user_group.user.id %}" class="btn btn-primary btn-sm">Сменить логин</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+

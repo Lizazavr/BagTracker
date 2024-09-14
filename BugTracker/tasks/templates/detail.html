@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Details</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .status-btn {
+            margin-right: 5px;
+        }
+        .status-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .status-btn.disabled {
+            background-color: #6c757d;
+            color: #fff;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Задача: {{ task.header }}</h2>
+        <div class="card">
+            <div class="card-body">
+                <p><strong>Тип:</strong> {{ task.type }}</p>
+                <p><strong>Приоритет:</strong> {{ task.priority.name }}</p>
+                <p><strong>Статус:</strong>
+                    {% for status in statuses %}
+                        {% if status.number == task.status.number or status.number == task.status.number|add:1 or status.number == 0 or status.number == 1 %}
+                            <a href="#" class="btn btn-outline-primary status-btn {% if task.status == status %}active{% endif %}" onclick="updateTaskStatus({{ task.id }}, {{ status.id }})">{{ status.name }}</a>
+                        {% else %}
+                            <a href="#" class="btn btn-outline-secondary status-btn disabled">{{ status.name }}</a>
+                        {% endif %}
+                    {% endfor %}
+                </p>
+                <p><strong>Описание:</strong> {{ task.description }}</p>
+                <p><strong>Исполнитель:</strong> {% if task.executor %}{{ task.executor.username }}{% else %}Не назначен{% endif %}</p>
+                <p><strong>Создатель:</strong> {{ task.creator.username }}</p>
+                <p><strong>Дата создания:</strong> {{ task.date_creation }}</p>
+                <p><strong>Дата изменения:</strong> {{ task.date_change }}</p>
+            </div>
+        </div>
+        <div class="mt-3">
+            <a href="{% url 'tasks' %}" class="btn btn-secondary">Вернуться к списку задач</a>
+            <a href="{% url 'task_edit' task.id %}" class="btn btn-primary">Редактировать</a>
+            <a class="btn btn-danger" href="{% url 'delete_task' task.id %}">Удалить задачу</a>
+            <a href="{% url 'task_create' %}?parent_task={{ task.id }}" class="btn btn-primary">Новая подзадача</a>
+            <button class="btn btn-primary" id="toggleHistoryBtn">Показать историю изменений</button>
+            <button class="btn btn-primary" id="toggleDependenciesBtn">Показать зависимости</button>
+
+        </div>
+        {% if parent_task %}
+            <div class="mt-5">
+                <h3>Родительская задача:</h3>
+                <a href="{% url 'task_detail' parent_task.id %}">{{ parent_task.header }}</a>
+            </div>
+        {% endif %}
+        {% if child_tasks %}
+            <div class="mt-5">
+                <h3>Подзадачи:</h3>
+                <ul>
+                    {% for child_task in child_tasks %}
+                        <li><a href="{% url 'task_detail' child_task.id %}">{{ child_task.header }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        <div class="mt-5">
+            <h3>Блокирующие задачи:</h3>
+            {% if blocking_tasks %}
+                <ul>
+                    {% for blocking_task in blocking_tasks %}
+                        <li><a href="{% url 'task_detail' blocking_task.id %}">{{ blocking_task.header }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Нет блокирующих задач</p>
+            {% endif %}
+        </div>
+        <div class="mt-5">
+            <h3>Блокируемые задачи:</h3>
+            {% if blocked_tasks %}
+                <ul>
+                    {% for blocked_task in blocked_tasks %}
+                        <li><a href="{% url 'task_detail' blocked_task.id %}">{{ blocked_task.header }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>Нет блокируемых задач</p>
+            {% endif %}
+        </div>
+        <div class="mt-5 history-container" style="display: none;">
+            <h3>История изменений</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Дата изменения</th>
+                        <th>Кто изменил</th>
+                        <th>Тип</th>
+                        <th>Приоритет</th>
+                        <th>Статус</th>
+                        <th>Заголовок</th>
+
+                        <th>Описание</th>
+                        <th>Исполнитель</th>
+                        <th>Пользователь</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for history in task_history %}
+                    <tr>
+                        <td>{{ history.date_change }}</td>
+                        <td>{{ history.user }}</td>
+                        <td>{{ history.type }}</td>
+                        <td>{{ history.priority.name }}</td>
+                        <td>{{ history.status.name }}</td>
+                        <td>{{ history.header }}</td>
+                        <td>{{ history.description }}</td>
+                        <td>{% if history.executor %}{{ history.executor.username }}{% else %}Не назначен{% endif %}</td>
+                        <td>{{ history.user.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        var historyContainer = document.querySelector('.history-container');
+        var toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
+
+
+        function toggleHistory() {
+            if (historyContainer.style.display === 'none') {
+                historyContainer.style.display = 'block';
+                toggleHistoryBtn.textContent = 'Скрыть историю изменений';
+            } else {
+                historyContainer.style.display = 'none';
+                toggleHistoryBtn.textContent = 'Показать историю изменений';
+            }
+        }
+
+        toggleHistoryBtn.addEventListener('click', toggleHistory);
+
+        function updateTaskStatus(taskId, statusId) {
+            fetch(`/tasks/${taskId}/update_status/${statusId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка при обновлении статуса задачи.');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка:', error);
+                alert('Произошла ошибка при обновлении статуса задачи.');
+            });
+        }
+
+                // Добавить обработчик клика на кнопку "Показать зависимости"
+    document.getElementById('toggleDependenciesBtn').addEventListener('click', function() {
+        document.querySelector('.dependencies-container').style.display = 'block';
+        document.querySelector('.history-container').style.display = 'none';
+    });
+
+    // Добавить обработчик клика на кнопку "Показать историю изменений"
+    document.getElementById('toggleHistoryBtn').addEventListener('click', function() {
+        document.querySelector('.dependencies-container').style.display = 'none';
+        document.querySelector('.history-container').style.display = 'block';
+    });
+    </script>
+</body>
+</html>
+
+
+
+
+

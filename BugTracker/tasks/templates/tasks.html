@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('tbody tr').dblclick(function() {
+                var taskId = $(this).data('task-id');
+                window.location.href = '{% url 'task_detail' %}' + '/' + taskId + '/';
+            });
+
+            $('#toggleFilters').click(function() {
+                $('.filters-container').toggle();
+            });
+
+            $('#search_query, #status_filter, #priority_filter, #executor_filter').on('change keyup', function() {
+                filterTasks();
+            });
+
+            function filterTasks() {
+                var searchQuery = $('#search_query').val().toLowerCase();
+                var statusFilter = $('#status_filter').val();
+                var priorityFilter = $('#priority_filter').val();
+                var executorFilter = $('#executor_filter').val();
+
+                $('tbody tr').each(function() {
+                    var taskHeader = $(this).find('td:nth-child(4)').text().toLowerCase();
+                    var taskDescription = $(this).find('td:nth-child(5)').text().toLowerCase();
+                    var taskStatus = $(this).find('td:nth-child(3)').text();
+                    var taskPriority = $(this).find('td:nth-child(2)').text();
+                    var taskExecutor = $(this).find('td:nth-child(6)').text();
+
+                    var matchesSearch = taskHeader.includes(searchQuery) || taskDescription.includes(searchQuery);
+                    var matchesStatus = statusFilter ? taskStatus === statusFilter : true;
+                    var matchesPriority = priorityFilter ? taskPriority === priorityFilter : true;
+                    var matchesExecutor = executorFilter ? taskExecutor === executorFilter : true;
+
+                    $(this).toggle(matchesSearch && matchesStatus && matchesPriority && matchesExecutor);
+                });
+            }
+        });
+    </script>
+    <style>
+        .filters-container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+{% csrf_token %}
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+            <a class="navbar-brand" href="#">{{ request.user.username }} - {% if request.user.groups.exists %}
+                                 {% for group in request.user.groups.all %}
+                                     {{ group.name }}
+                                 {% endfor %}
+                             {% else %}
+                                 No role assigned
+                             {% endif %}</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'task_create' %}">Create Task</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'assign_roles' %}">Assign Roles</a>
+                    </li>
+                    <li class="nav-item">
+
+                        <a class="nav-link" href="{% url 'change_password' %}">Change password</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h2>Tasks</h2>
+            </div>
+            <div class="col-md-6 text-right">
+                <button id="toggleFilters" class="btn btn-primary">Toggle Filters</button>
+            </div>
+        </div>
+
+        <div class="row filters-container">
+            <div class="col-md-12">
+                <form method="get" action="{% url 'task_search' %}">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="search_query">Search</label>
+                            <input type="text" class="form-control" id="search_query" name="search_query" value="{{ search_query }}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="status_filter">Status</label>
+                            <select class="form-control" id="status_filter" name="status_filter">
+                                <option value="">All</option>
+                                {% for status in all_statuses %}
+                                    <option value="{{ status.id }}" >{{ status.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="priority_filter">Priority</label>
+                            <select class="form-control" id="priority_filter" name="priority_filter">
+                                <option value="">All</option>
+                                {% for priority in all_priorities %}
+                                    <option value="{{ priority.name }}" {% if priority.name == priority_filter %}selected{% endif %}>{{ priority.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="executor_filter">Executor</label>
+                            <select class="form-control" id="executor_filter" name="executor_filter">
+                                <option value="">All</option>
+                                {% for executor in all_executors %}
+                                    <option value="{{ executor.username }}" {% if executor.username == executor_filter %}selected{% endif %}>{{ executor.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <h2>All Tasks</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Type</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Header</th>
+                    <th>Executor</th>
+                    <th>Creator</th>
+                    <th>Creation Date</th>
+                    <th>Change Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr data-task-id="{{ task.id }}">
+                    <td>{{ task.id }}</td>
+                    <td>{{ task.type }}</td>
+                    <td>{{ task.priority.name }}</td>
+                    <td>{{ task.status.name }}</td>
+                    <td>{{ task.header }}</td>
+                    <td>{% if task.executor %}{{ task.executor.username }}{% else %}Не назначен{% endif %}</td>
+                    <td>{{ task.creator.username }}</td>
+                    <td>{{ task.date_creation }}</td>
+                    <td>{{ task.date_change }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
+
+

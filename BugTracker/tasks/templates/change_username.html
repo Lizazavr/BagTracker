@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+
+{% block content %}
+  <h1>Смена логина для пользователя {{ user.username }}</h1>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="new_username">Новый логин:</label>
+      <input type="text" class="form-control" id="new_username" name="new_username" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Изменить логин</button>
+  </form>
+{% endblock %}
+
+</body>
+</html>

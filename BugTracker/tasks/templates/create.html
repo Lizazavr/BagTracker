@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание задачи</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Создание задачи</h2>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="type">Тип</label>
+                <select class="form-control" id="type" name="type" required>
+                    <option value="">Выберите тип</option>
+                    {% for type in task_types %}
+                        <option value="{{ type.id }}">{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="priority">Приоритет</label>
+                <select class="form-control" id="priority" name="priority">
+                    <option value="">Выберите приоритет</option>
+                    {% for priority in priorities %}
+                        <option value="{{ priority.id }}">{{ priority.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="status">Статус</label>
+                <select class="form-control" id="status" name="status" required>
+                    <option value="">Выберите статус</option>
+                    {% for status in statuses %}
+                        <option value="{{ status.id }}">{{ status.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="header">Заголовок</label>
+                <input type="text" class="form-control" id="header" name="header" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Описание</label>
+                <textarea class="form-control" id="description" name="description" rows="3" ></textarea>
+            </div>
+            <div class="form-group">
+                <label for="executor">Исполнитель</label>
+                <select class="form-control" id="executor" name="executor">
+                    <option value="">Выберите исполнителя</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="parent_task">Родительская задача</label>
+                <select class="form-control" id="parent_task" name="parent_task">
+                    <option value="">Нет родительской задачи</option>
+                    {% for parent_task in parent_tasks %}
+                        <option value="{{ parent_task.id }}" {% if parent_task.id == parent_task_id %}selected{% endif %}>{{ parent_task.header }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Создать</button>
+        </form>
+    </div>
+</body>
+</html>
