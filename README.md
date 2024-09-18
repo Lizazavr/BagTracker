@@ -25,8 +25,8 @@ poetry run python manage.py migrate
 ```
 ### Проверка покрытия тестов
 ```
-coverage run --source=tasks manage.py test tasks
-coverage html
+poetry run coverage run --source=tasks manage.py test tasks
+poetry run coverage html
 ```
 После выполнения последней команды, отчет о покрытии тестов будет доступен по пути:
 
