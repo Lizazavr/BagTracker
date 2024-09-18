@@ -15,7 +15,7 @@ poetry run python manage.py runserver
 Сервер доступен по ссылке http://127.0.0.1:8000/api/docs
 
 ### Запуск тестов
-Для запуска тестов используйте локальную БД.
+Для запуска тестов используйте локальную БД. Подключение к БД находится в файле BugTracker/settings.py.
 ```
 poetry run python manage.py test tasks
 ```
