@@ -5,9 +5,9 @@ BugTracker - веб-приложение для отслеживания вып�
 ## Запуск приложения
 
 ### Создание завизимостей
-
+'''
 poetry install
-
+'''
 ### Запуск сервера
 
 poetry run python manage.py runserver
@@ -16,12 +16,12 @@ poetry run python manage.py runserver
 
 ### Запуск тестов
 
-poetry run python manager.py test tasks
+poetry run python manage.py test tasks
 
 ### Создание и запуск миграций
 
-poetry run python manager.py makemigrations\\
-poetry run python manager.py migrate
+poetry run python manage.py makemigrations\\
+poetry run python manage.py migrate
 
 ### Проверка покрытия тестов
 
