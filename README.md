@@ -14,12 +14,12 @@ poetry run python manage.py runserver
 
 ### Запуск тестов
 
-poetry manager.py test tasks
+poetry run python manager.py test tasks
 
 ### Создание и запуск миграций
 
-poetry manager.py makemigrations
-poetry manager.py migrate
+poetry run python manager.py makemigrations
+poetry run python manager.py migrate
 
 ### Проверка покрытия тестов
 
