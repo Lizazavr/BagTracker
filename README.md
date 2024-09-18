@@ -36,3 +36,12 @@ BagTracker/BagTracker/htmlcov/index.html
 Менеджер:
 - login: manager
 - password: password
+Тимлид:
+- login: teamlead
+- password: qwerty
+Разработчик:
+- login: developer
+- password: 1234567890
+Тест-инженер:
+- login: test_engineer
+- password: 123qwe456rty
