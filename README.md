@@ -12,6 +12,8 @@ poetry install
 
 poetry run python manage.py runserver
 
+Сервер доступен по ссылке http://127.0.0.1:8000/api/docs
+
 ### Запуск тестов
 
 poetry run python manager.py test tasks
