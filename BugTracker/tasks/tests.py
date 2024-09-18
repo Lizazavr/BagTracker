@@ -18,6 +18,7 @@ class TaskListViewTestCase(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser', password='testpassword')
         self.task_type = TaskType.objects.create(name='Bug')
+        self.task_type2 = TaskType.objects.create(name='Task')
         self.priority = Priority.objects.create(name='High')
         self.status = Status.objects.create(name='To do', number=1)
         self.task1 = Task.objects.create(
@@ -26,7 +27,7 @@ class TaskListViewTestCase(APITestCase):
             executor=self.user, creator=self.user
         )
         self.task2 = Task.objects.create(
-            type=self.task_type, priority=self.priority, status=self.status,
+            type=self.task_type2, priority=self.priority, status=self.status,
             header='Test task 2', description='This is another test task',
             executor=self.user, creator=self.user
         )
@@ -83,6 +84,14 @@ class TaskListViewTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         self.assertContains(response, self.task1.header)
+        self.assertContains(response, self.task2.header)
+
+    def test_task_list_view_with_type_query(self):
+        self.client.force_authenticate(user=self.user)
+        url = reverse('tasks') + '?type=Task'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
         self.assertContains(response, self.task2.header)
 
     def test_task_list_view_with_unauthenticated_user(self):

@@ -30,11 +30,12 @@ class IsNotManager(BasePermission):
             return not user.groups.filter(name='Менеджер').exists()
         return True
 
+# Функция отображения всех задач
 @extend_schema(
     methods=['GET'],
     parameters=[
         OpenApiParameter('search', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY),
-        OpenApiParameter('priority', type=str, location=OpenApiParameter.QUERY, enum=[priority.name for priority in Priority.objects.all()]),
+        OpenApiParameter('type', type=str, location=OpenApiParameter.QUERY, enum=[tasktype.name for tasktype in TaskType.objects.all()]),
         OpenApiParameter('executor', type=str, location=OpenApiParameter.QUERY, enum=[user.username for user in User.objects.all()]),
         OpenApiParameter('status', type=str, location=OpenApiParameter.QUERY, enum=[status.name for status in Status.objects.all()]),
         OpenApiParameter('creator', type=str, location=OpenApiParameter.QUERY, enum=[user.username for user in User.objects.all()]),
@@ -49,7 +50,7 @@ def task_list_view(request):
     user = request.user
 
     status_filter = request.GET.get('status')
-    priority_filter = request.GET.get('priority')
+    type_filter = request.GET.get('type')
     executor_filter = request.GET.get('executor')
     creator_filter = request.GET.get('creator')
     search_query = request.GET.get('search')
@@ -65,8 +66,8 @@ def task_list_view(request):
 
     if status_filter:
         tasks = tasks.filter(status__name=status_filter)
-    if priority_filter:
-        tasks = tasks.filter(priority__name=priority_filter)
+    if type_filter:
+        tasks = tasks.filter(type__name=type_filter)
     if executor_filter:
         tasks = tasks.filter(executor__username=executor_filter)
     if creator_filter:
@@ -75,7 +76,7 @@ def task_list_view(request):
     serializer = TaskSerializer(tasks, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
-
+# Функция отображения определенной задачи
 @extend_schema(
     methods=['GET'],
     parameters=[
@@ -116,7 +117,7 @@ def task_detail_view(request, task_id):
 
     return Response(task_data, status=status.HTTP_200_OK)
 
-
+# Функция создания задачи
 @extend_schema(
     methods=['POST'],
     parameters=[
@@ -128,7 +129,6 @@ def task_detail_view(request, task_id):
         OpenApiParameter('executor', type=str, location=OpenApiParameter.QUERY, enum=[user.username for user in User.objects.all()]),
         OpenApiParameter('parent_task', type=str, location=OpenApiParameter.QUERY, enum=[task.header for task in Task.objects.all()]),
         OpenApiParameter('blocked_tasks', type=str, location=OpenApiParameter.QUERY),
-        OpenApiParameter('blocking_tasks', type=str, location=OpenApiParameter.QUERY),
     ],
 )
 @api_view(['POST'])
@@ -154,16 +154,14 @@ def task_create_view(request):
             return Response({'error': 'Указанный исполнитель не найден.'}, status=status.HTTP_400_BAD_REQUEST)
 
     parent_task_header = request.query_params.get('parent_task')
-    blocked_tasks_headers = request.query_params.get('blocked_tasks', '').split(',')
-    blocking_tasks_headers = request.query_params.get('blocking_tasks', '').split(',')
+    blocked_tasks_ids = [int(task_id.strip()) for task_id in request.query_params.get('blocked_tasks', '').split(',') if
+                         task_id.strip()]
 
     type_obj = TaskType.objects.get(name=type_name)
     priority_obj = Priority.objects.get(name=priority_name) if priority_name else None
     status_obj = Status.objects.get(name=status_name)
     executor_obj = User.objects.get(username=executor_name) if executor_name else None
     parent_task_obj = Task.objects.get(header=parent_task_header) if parent_task_header else None
-    blocked_tasks_objs = Task.objects.filter(header__in=[header.strip() for header in blocked_tasks_headers if header.strip()])
-    blocking_tasks_objs = Task.objects.filter(header__in=[header.strip() for header in blocking_tasks_headers if header.strip()])
 
     if status_obj.name in ['In progress', 'Code review', 'Dev test'] and executor_obj and executor_obj.groups.filter(name='Тест-инженер').exists():
         return Response({'error': 'При статусах "In progress", "Code review", "Dev test" исполнителем не может быть тест-инженер.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -190,11 +188,11 @@ def task_create_view(request):
     if parent_task_obj:
         Subtasks.objects.create(id_task=parent_task_obj, id_subtask=task)
 
-    for blocked_task in blocked_tasks_objs:
-        Subtasks.objects.create(id_task=blocked_task, id_subtask=task)
-
-    for blocking_task in blocking_tasks_objs:
-        Subtasks.objects.create(id_task=task, id_subtask=blocking_task)
+    for blocked_task_id in blocked_tasks_ids:
+        Dependency.objects.create(
+            blocking_task_id=task.id,
+            blocked_task_id=blocked_task_id
+        )
 
     TaskHistory.objects.create(
         task_id=task.id,
@@ -210,6 +208,7 @@ def task_create_view(request):
     return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
 
 
+# Функция редактирования задачи
 @extend_schema(
     methods=['PUT'],
     parameters=[
@@ -219,7 +218,6 @@ def task_create_view(request):
         OpenApiParameter('header', type=str, location=OpenApiParameter.QUERY, required=True),
         OpenApiParameter('description', type=str, location=OpenApiParameter.QUERY),
         OpenApiParameter('executor', type=str, location=OpenApiParameter.QUERY, enum=[user.username for user in User.objects.all()]),
-        OpenApiParameter('blocking_tasks', type=str, location=OpenApiParameter.QUERY),
         OpenApiParameter('blocked_tasks', type=str, location=OpenApiParameter.QUERY),
     ],
     responses={
@@ -236,8 +234,8 @@ def task_edit_view(request, task_id):
     header = request.query_params.get('header')
     description = request.query_params.get('description')
     executor_name = request.query_params.get('executor')
-    blocking_tasks_headers = request.query_params.get('blocking_tasks', '').split(',')
-    blocked_tasks_headers = request.query_params.get('blocked_tasks', '').split(',')
+    blocked_tasks_ids = [int(task_id.strip()) for task_id in request.query_params.get('blocked_tasks', '').split(',') if
+                         task_id.strip()]
 
     if executor_name:
         try:
@@ -252,20 +250,6 @@ def task_edit_view(request, task_id):
     priority_obj = Priority.objects.get(name=priority_name) if priority_name else None
     executor_obj = User.objects.get(username=executor_name) if executor_name else None
 
-    blocking_tasks_objs = Task.objects.filter(header__in=[header.strip() for header in blocking_tasks_headers if header.strip()])
-    blocked_tasks_objs = Task.objects.filter(header__in=[header.strip() for header in blocked_tasks_headers if header.strip()])
-
-    task_history = TaskHistory.objects.create(
-        task=task,
-        type=type_obj,
-        priority=priority_obj,
-        status=task.status,
-        header=header,
-        description=description,
-        executor=executor_obj,
-        user=request.user
-    )
-
     task.type = type_obj
     task.priority = priority_obj
     task.header = header
@@ -276,14 +260,27 @@ def task_edit_view(request, task_id):
     Dependency.objects.filter(blocking_task=task).delete()
     Dependency.objects.filter(blocked_task=task).delete()
 
-    for blocking_task in blocking_tasks_objs:
-        Dependency.objects.create(blocking_task=blocking_task, blocked_task=task)
-    for blocked_task in blocked_tasks_objs:
-        Dependency.objects.create(blocking_task=task, blocked_task=blocked_task)
+    for blocked_task_id in blocked_tasks_ids:
+        Dependency.objects.create(
+            blocking_task_id=task.id,
+            blocked_task_id=blocked_task_id
+        )
+
+    TaskHistory.objects.create(
+        task=task,
+        type=type_obj,
+        priority=priority_obj,
+        status=task.status,
+        header=header,
+        description=description,
+        executor=executor_obj,
+        user=request.user
+    )
 
     return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
 
 
+# Функция отображения всех пользователей
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsManager])
 @extend_schema(
@@ -300,6 +297,8 @@ def assign_roles_view(request):
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response({'error': 'Bad request'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# Функция изменения роли пользователя
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsManager])
 @extend_schema(
@@ -325,6 +324,8 @@ def update_roles_view(request, user_id, group_id):
     response_data = {**user_serializer.data, **user_group_serializer.data}
     return Response(response_data, status=status.HTTP_200_OK)
 
+
+# Функция изменения статуса задачи
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsNotManager])
 @extend_schema(
@@ -355,11 +356,11 @@ def update_task_status(request, task_id, status_id):
 
         TaskHistory.objects.create(
             task=task,
-            type='status_update',
+            type=task.type.id,
             priority_id=priority_id,
             status=new_status,
-            header=f'Статус задачи обновлен: {task.header}',
-            description=f'Статус задачи обновлен с "{task.status.name}" на "{new_status.name}"',
+            header=task.header,
+            description=task.description,
             executor=request.user,
             user=request.user
         )
@@ -374,6 +375,7 @@ def update_task_status(request, task_id, status_id):
         return JsonResponse({'success': False, 'error': 'Недопустимый статус'}, status=400)
 
 
+# Функция удаления задачи
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated, IsManager])
 @extend_schema(
@@ -394,6 +396,8 @@ def delete_task_view(request, task_id):
 
     return JsonResponse({'success': True, 'error': 'Задача удалена'}, status=200)
 
+
+# Функция изменения пароля
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @extend_schema(
@@ -402,7 +406,7 @@ def delete_task_view(request, task_id):
         OpenApiParameter('new_password', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY),
     ],
 )
-def change_password(request):
+def change_password_view(request):
     if request.method == 'POST':
         new_password = request.query_params.get('new_password')
         if not new_password:
@@ -412,6 +416,7 @@ def change_password(request):
         return Response({'success': False, 'error': 'Метод не поддерживается.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
+# Функция изменения имени пользователя
 @extend_schema(
     methods=['POST'],
     parameters=[
@@ -421,7 +426,7 @@ def change_password(request):
 )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsManager])
-def change_username(request, user_id):
+def change_username_view(request, user_id):
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
@@ -441,11 +446,12 @@ def change_username(request, user_id):
     return Response({'success': True, 'message': 'Ваш логин был успешно изменен.'}, status=status.HTTP_200_OK)
 
 
+# Функция регистрации
 @api_view(['POST'])
 @extend_schema(
     methods=['POST'],
 )
-def register_user(request, username, password):
+def register_user_view(request, username, password):
     if not username or not password:
         return Response({'error': 'Нет логина или пароля.'}, status=status.HTTP_400_BAD_REQUEST)
     try:
@@ -456,6 +462,7 @@ def register_user(request, username, password):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# Функция входа
 @swagger_auto_schema(
     method='post',
     request_body=openapi.Schema(
@@ -477,7 +484,7 @@ def register_user(request, username, password):
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def user_login(request, username, password):
+def user_login_view(request, username, password):
     try:
         user = User.objects.get(username=username)
         if user.check_password(password):
