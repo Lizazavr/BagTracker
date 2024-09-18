@@ -40,9 +40,11 @@ BagTracker/BagTracker/htmlcov/index.html
 Тимлид:
 - login: teamlead
 - password: qwerty
+
 Разработчик:
 - login: developer
 - password: 1234567890
+
 Тест-инженер:
 - login: test_engineer
 - password: 123qwe456rty
