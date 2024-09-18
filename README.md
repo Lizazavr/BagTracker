@@ -32,6 +32,7 @@ coverage html
 
 BagTracker/BagTracker/htmlcov/index.html
 
-## Аккаунт менеджера
+## Аккаунты
+Менеджер:
 - login: manager
 - password: password
