@@ -20,7 +20,7 @@ poetry run python manager.py test tasks
 
 ### Создание и запуск миграций
 
-poetry run python manager.py makemigrations
+poetry run python manager.py makemigrations\\
 poetry run python manager.py migrate
 
 ### Проверка покрытия тестов
