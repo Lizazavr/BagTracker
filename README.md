@@ -10,7 +10,7 @@ poetry install
 
 ### Запуск сервера
 
-poetry manager.py runserver
+poetry run python manage.py runserver
 
 ### Запуск тестов
 
