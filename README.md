@@ -31,7 +31,7 @@ poetry run coverage html
 ```
 После выполнения последней команды, отчет о покрытии тестов будет доступен по пути:
 
-BagTracker/BagTracker/htmlcov/index.html
+/htmlcov/index.html
 
 ## Аккаунты
 Менеджер:
