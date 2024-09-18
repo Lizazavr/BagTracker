@@ -4,18 +4,22 @@ BugTracker - веб-приложение для отслеживания вып�
 
 ## Запуск приложения
 
-### Запуск тестов
+### Создание завизимостей
 
-python manager.py test tasks
+poetry install
 
 ### Запуск сервера
 
-python manager.py runserver
+poetry manager.py runserver
+
+### Запуск тестов
+
+poetry manager.py test tasks
 
 ### Создание и запуск миграций
 
-python manager.py makemigrations
-python manager.py migrate
+poetry manager.py makemigrations
+poetry manager.py migrate
 
 ### Проверка покрытия тестов
 
